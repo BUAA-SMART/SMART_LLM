@@ -1,0 +1,9 @@
+description: vicuna_weights_check
+resources:
+  slots: 0
+bind_mounts:
+  - host_path: /home/nfs_data/models/vicuna/vicuna-7b/vicuna_7b_weights
+    container_path: /root/model
+  - host_path: /home/nfs_data/dataset/MOSS_SFT
+    container_path: /root/dataset
+idle_timeout: 30m

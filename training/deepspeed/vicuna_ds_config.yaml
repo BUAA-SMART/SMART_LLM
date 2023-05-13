@@ -1,0 +1,44 @@
+name: vicuna_13b_fine_tuning_only_lora
+hyperparameters:
+  pretrained_model_name_or_path: /root/model
+  deepspeed_config: ds_config_zero3.json
+  model_mode: base
+  use_pretrained_weights: true
+  cache_dir: null
+  lora_dropout: 0.05
+  lora_r: 8
+  lora_alpha: 16
+data:
+  data_path: /root/dataset/zh_honesty.json
+  lazy_preprocess: false
+records_per_epoch: 5344
+min_validation_period:
+  batches: 4
+searcher:
+  name: single
+  metric: perplexity
+  max_length:
+    epochs: 10000
+  smaller_is_better: true
+resources:
+  slots_per_trial: 4
+environment:
+  environment_variables:
+    - NCCL_DEBUG=INFO
+    - NCCL_SOCKET_IFNAME=ens,eth,ib
+  image:
+    gpu: registry.cn-beijing.aliyuncs.com/determined/environments:cuda-11.7-pytorch-1.13-deepspeed-0.9.2-gpu-0.22.1
+bind_mounts:
+  # - host_path: /home/nfs_data/models/vicuna/vicuna-13b/vicuna_13b_weights_v1.1
+  - host_path: /home/nfs_data/models/vicuna/vicuna-7b/vicuna_7b_weights
+    container_path: /root/model
+  - host_path: /home/nfs_data/dataset/MOSS_SFT
+    container_path: /root/dataset
+profiling:
+  enabled: true
+entrypoint:
+  - python3
+  - -m
+  - determined.launch.deepspeed
+  - --trial
+  - vicuna_trial:VicunaTrial

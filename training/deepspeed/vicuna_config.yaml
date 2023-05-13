@@ -1,0 +1,40 @@
+name: vicuna_13b_fine_tuning_only_lora
+hyperparameters:
+  pretrained_model_name_or_path: /root/model
+  model_mode: base
+  use_pretrained_weights: true
+  cache_dir: null
+
+  # Training Args
+  global_batch_size: 12
+  learning_rate: 2.0e-5
+  adam_epsilon: 1.0e-8
+  weight_decay: 0
+  lr_scheduler_type: linear
+  num_warmup_steps: 0
+data:
+  data_path: /root/dataset
+  lazy_preprocess: false
+records_per_epoch: 5344
+min_validation_period:
+  batches: 500
+searcher:
+  name: single
+  metric: perplexity
+  max_length:
+    epochs: 10
+  smaller_is_better: true
+resources:
+  slots_per_trial: 4
+environment:
+  environment_variables:
+    - NCCL_DEBUG=INFO
+    - NCCL_SOCKET_IFNAME=ens,eth,ib
+  image:
+    gpu: determinedai/environments:cuda-11.3-pytorch-1.10-deepspeed-0.8.3-gpu-6eceaca
+bind_mounts:
+  - host_path: /home/nfs_data/models/vicuna/vicuna-13b/vicuna_13b_weights_v1.1
+    container_path: /root/model
+  - host_path: /home/nfs_data/dataset/MOSS_SFT
+    container_path: /root/dataset
+entrypoint: vicuna_trial:VicunaTrial
