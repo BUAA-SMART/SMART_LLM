@@ -160,7 +160,7 @@ def make_supervised_data_module(
 
     # Split train/test
     perm = np.random.permutation(len(raw_data))
-    split = int(len(perm) * 0.98)
+    split = int(len(perm) * 0.999)
     train_indices = perm[:split]
     eval_indices = perm[split:]
     train_raw_data = [raw_data[i] for i in train_indices]

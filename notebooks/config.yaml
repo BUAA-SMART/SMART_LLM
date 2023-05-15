@@ -1,6 +1,13 @@
 description: vicuna_weights_check
 resources:
   slots: 0
+environment:
+  environment_variables:
+    - NCCL_DEBUG=INFO
+    - NCCL_SOCKET_IFNAME=ens,eth,ib
+  image:
+    cpu: registry.cn-beijing.aliyuncs.com/determined/environments:cuda-11.7-pytorch-1.13-deepspeed-0.9.2-gpu-0.22.1
+    gpu: registry.cn-beijing.aliyuncs.com/determined/environments:cuda-11.7-pytorch-1.13-deepspeed-0.9.2-gpu-0.22.1
 bind_mounts:
   - host_path: /home/nfs_data/models/vicuna/vicuna-7b/vicuna_7b_weights
     container_path: /root/model

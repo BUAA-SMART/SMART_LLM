@@ -1,7 +1,7 @@
-name: vicuna_7b_ft_ds_lora_4u_length_512_zero2
+name: vicuna_7b_fine_tuning_ds_lora_2n8u_amp
 hyperparameters:
   pretrained_model_name_or_path: /root/model
-  deepspeed_config: ds_config_zero3.json
+  deepspeed_config: ds_config_community.json
   model_mode: base
   use_pretrained_weights: true
   cache_dir: null
@@ -9,37 +9,39 @@ hyperparameters:
   lora_r: 8
   lora_alpha: 16
 data:
-  data_path: /root/dataset/zh_honesty.json
+  data_path: /root/dataset/ShareGPT_en.json
   lazy_preprocess: false
 records_per_epoch: 5344
+max_restarts: 1
 min_validation_period:
   batches: 5344
 searcher:
   name: single
   metric: perplexity
   max_length:
-    epochs: 10
+    epochs: 100
   smaller_is_better: true
 resources:
-  slots_per_trial: 4
+  slots_per_trial: 8
 environment:
   environment_variables:
     - NCCL_DEBUG=INFO
-    - NCCL_SOCKET_IFNAME=ens,eth,ib
+    - NCCL_SOCKET_IFNAME=bond
   image:
     gpu: registry.cn-beijing.aliyuncs.com/determined/environments:cuda-11.7-pytorch-1.13-deepspeed-0.9.2-gpu-0.22.1
 bind_mounts:
   # - host_path: /home/nfs_data/models/vicuna/vicuna-13b/vicuna_13b_weights_v1.1
-  - host_path: /home/nfs_data/models/vicuna/vicuna-7b/vicuna_7b_weights
+  # - host_path: /home/nfs_data/models/vicuna/vicuna-7b/vicuna_7b_weights
+  - host_path: /home/nfs_data/models/LLaMA/llama_7B_hf_format
     container_path: /root/model
-  - host_path: /home/nfs_data/dataset/MOSS_SFT
+  # - host_path: /home/nfs_data/dataset/MOSS_SFT
+  - host_path: /home/nfs_data/dataset/ShareGPT
     container_path: /root/dataset
 profiling:
   enabled: true
-  
 checkpoint_policy: best
 checkpoint_storage:
-  host_path: /home/nfs_data/vicuna_ft_MOSS_SFT_7b
+  host_path: /home/nfs_data/llama_ft_MOSS_SFT_7b
   propagation: rprivate
   save_experiment_best: 0
   save_trial_best: 1

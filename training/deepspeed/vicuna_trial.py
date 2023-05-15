@@ -117,6 +117,11 @@ class VicunaTrial(DeepSpeedTrial):
         #     inputs = inputs.half()
         outputs = self.model_engine(**inputs)
         loss = outputs.loss
+        print("input_ids")
+        print(inputs["input_ids"])
+        print("labels")
+        print(inputs["labels"])
+        print(loss)
         self.model_engine.backward(loss)
         self.model_engine.step()
         return {'loss': loss.item()}
