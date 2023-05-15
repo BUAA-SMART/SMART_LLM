@@ -1,7 +1,7 @@
-name: vicuna_7b_ft_ds_lora_4u_length_512
+name: vicuna_7b_fine_tuning_ds_lora_2n8u
 hyperparameters:
   pretrained_model_name_or_path: /root/model
-  deepspeed_config: ds_config_zero3.json
+  deepspeed_config: ds_config_zero3_2n8u.json
   model_mode: base
   use_pretrained_weights: true
   cache_dir: null
@@ -18,14 +18,14 @@ searcher:
   name: single
   metric: perplexity
   max_length:
-    epochs: 10
+    epochs: 100
   smaller_is_better: true
 resources:
-  slots_per_trial: 4
+  slots_per_trial: 8
 environment:
   environment_variables:
     - NCCL_DEBUG=INFO
-    - NCCL_SOCKET_IFNAME=ens,eth,ib
+    - NCCL_SOCKET_IFNAME=bond
   image:
     gpu: registry.cn-beijing.aliyuncs.com/determined/environments:cuda-11.7-pytorch-1.13-deepspeed-0.9.2-gpu-0.22.1
 bind_mounts:

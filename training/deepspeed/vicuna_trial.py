@@ -105,11 +105,18 @@ class VicunaTrial(DeepSpeedTrial):
         epoch_idx: int,
         batch_idx: int,
     ) -> Union[torch.Tensor, Dict[str, Any]]:
-        inputs = self.context.to_device(next(dataloader_iter))
-        if self.fp16:
-            inputs = inputs.half()
-        loss = self.model_engine(inputs)
+        fetch_data_dict = next(dataloader_iter)
+        inputs = {}
+        for x in fetch_data_dict:
+            inputs[x] = self.context.to_device(fetch_data_dict[x])
+            # if self.fp16:
+            #     inputs[x]  = inputs[x].half()
 
+        # inputs = self.context.to_device(next(dataloader_iter))
+        # if self.fp16:
+        #     inputs = inputs.half()
+        outputs = self.model_engine(**inputs)
+        loss = outputs.loss
         self.model_engine.backward(loss)
         self.model_engine.step()
         return {'loss': loss.item()}
@@ -117,10 +124,16 @@ class VicunaTrial(DeepSpeedTrial):
     def evaluate_batch(
         self, dataloader_iter: Optional[Iterator[det_pytorch.TorchData]], batch_idx: int
     ) -> Dict[str, Any]:
-        inputs = self.context.to_device(next(dataloader_iter))
-        if self.fp16:
-            inputs = inputs.half()
-        outputs = self.model_engine(inputs)
-        self.reducer.update(outputs[0].detach().cpu().numpy())
+        fetch_data_dict = next(dataloader_iter)
+        inputs = {}
+        for x in fetch_data_dict:
+            inputs[x] = self.context.to_device(fetch_data_dict[x])
+        # inputs = self.context.to_device(next(dataloader_iter))
+        
+        # if self.fp16:
+        #     inputs = inputs.half()
+        outputs = self.model_engine(**inputs)
+        loss = outputs.loss
+        self.reducer.update(loss.detach().cpu().numpy())
         return {}
 

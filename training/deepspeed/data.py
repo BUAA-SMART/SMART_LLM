@@ -42,7 +42,7 @@ def preprocess(
         conversations,
         return_tensors="pt",
         padding="max_length",
-        max_length=tokenizer.model_max_length,
+        max_length=512,
         truncation=True,
         return_attention_mask=False,
     ).input_ids
