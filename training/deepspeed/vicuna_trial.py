@@ -16,6 +16,8 @@ from determined.pytorch.deepspeed import (
     overwrite_deepspeed_config
 )
 import numpy as np
+from deepspeed import zero
+from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
 
 import data
 
@@ -32,6 +34,37 @@ class LoraArguments:
     bias: str = "none"
 
 
+def maybe_zero_3(param):
+    if hasattr(param, "ds_id"):
+        assert param.ds_status == ZeroParamStatus.NOT_AVAILABLE
+        with zero.GatheredParameters([param]):
+            param = param.data.cpu().clone().detach()
+    return param
+
+
+# Borrowed from peft.utils.get_peft_model_state_dict
+def get_peft_state_maybe_zero_3(state_dict, bias):
+    if bias == "none":
+        to_return = {
+            k: state_dict[k].cpu().clone().detach() for k in state_dict if "lora_" in k
+        }
+    elif bias == "all":
+        to_return = {
+            k: state_dict[k] for k in state_dict if "lora_" in k or "bias" in k
+        }
+    elif bias == "lora_only":
+        to_return = {}
+        for k in state_dict:
+            if "lora_" in k:
+                to_return[k] = state_dict[k]
+                bias_name = k.split("lora_")[0] + "bias"
+                if bias_name in state_dict:
+                    to_return[bias_name] = state_dict[bias_name]
+    else:
+        raise NotImplementedError
+    to_return = {k: maybe_zero_3(v) for k, v in to_return.items()}
+    return to_return
+
 class VicunaTrial(DeepSpeedTrial):
     def __init__(self, context: DeepSpeedTrialContext) -> None:
         self.logger = logging.getLogger(__name__)
@@ -44,6 +77,7 @@ class VicunaTrial(DeepSpeedTrial):
             pretrained_model_name_or_path=self.args.get('pretrained_model_name_or_path'),
             cache_dir=self.args.get('cache_dir'),
             padding_side='right',
+            max_model_length=512,
             use_fast=False,
         )
         self.tokenizer.pad_token = self.tokenizer.unk_token
@@ -62,8 +96,12 @@ class VicunaTrial(DeepSpeedTrial):
             bias=LoraArguments.bias,
             task_type='CAUSAL_LM',
         )
+
         self.model = get_peft_model(self.model, lora_config)
+        self.model.print_trainable_parameters()
+
         parameters = filter(lambda p: p.requires_grad, self.model.parameters())
+
         ds_config = overwrite_deepspeed_config(
             self.args.deepspeed_config, self.args.get('overwrite_deepspeed_args', {})
         )
@@ -117,11 +155,8 @@ class VicunaTrial(DeepSpeedTrial):
         #     inputs = inputs.half()
         outputs = self.model_engine(**inputs)
         loss = outputs.loss
-        print("input_ids")
-        print(inputs["input_ids"])
-        print("labels")
-        print(inputs["labels"])
-        print(loss)
+        # print(loss)
+       
         self.model_engine.backward(loss)
         self.model_engine.step()
         return {'loss': loss.item()}
@@ -138,7 +173,7 @@ class VicunaTrial(DeepSpeedTrial):
         # if self.fp16:
         #     inputs = inputs.half()
         outputs = self.model_engine(**inputs)
-        loss = outputs.loss
+        loss = outputs.loss.fp16()
         self.reducer.update(loss.detach().cpu().numpy())
         return {}
 

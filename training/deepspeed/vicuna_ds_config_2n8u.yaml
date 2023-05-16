@@ -9,7 +9,7 @@ hyperparameters:
   lora_r: 8
   lora_alpha: 16
 data:
-  data_path: /root/dataset/zh_honesty.json
+  data_path: /root/dataset/zh_honesty_smart.json
   lazy_preprocess: false
 records_per_epoch: 5344
 min_validation_period:
@@ -18,7 +18,7 @@ searcher:
   name: single
   metric: perplexity
   max_length:
-    epochs: 100
+    epochs: 1
   smaller_is_better: true
 resources:
   slots_per_trial: 8
