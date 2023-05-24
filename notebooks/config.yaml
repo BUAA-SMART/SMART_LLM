@@ -1,4 +1,4 @@
-description: vicuna_weights_check
+description: vicuna_weights_load_and_check
 resources:
   slots: 0
 environment:
@@ -13,4 +13,6 @@ bind_mounts:
     container_path: /root/model
   - host_path: /home/nfs_data/dataset/MOSS_SFT
     container_path: /root/dataset
+  - host_path: /home/nfs_data
+    container_path: /home/nfs_data
 idle_timeout: 30m

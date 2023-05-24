@@ -1,4 +1,5 @@
 import logging
+import pathlib
 import typing
 import torch
 from typing import Any, Dict, Union, Iterator, Optional
@@ -77,7 +78,7 @@ class VicunaTrial(DeepSpeedTrial):
             pretrained_model_name_or_path=self.args.get('pretrained_model_name_or_path'),
             cache_dir=self.args.get('cache_dir'),
             padding_side='right',
-            max_model_length=512,
+            max_model_length=768,
             use_fast=False,
         )
         self.tokenizer.pad_token = self.tokenizer.unk_token
@@ -123,6 +124,34 @@ class VicunaTrial(DeepSpeedTrial):
             lambda losses: np.exp(np.mean(losses)), name="perplexity", for_training=False
         )
 
+    def save(self, context: DeepSpeedTrialContext, path: pathlib.Path) -> None:
+        if context.distributed.get_local_rank() == 0:
+            #state_dict = get_peft_state_maybe_zero_3(context.models[0].named_parameters(), LoraArguments.bias)
+            #context.models[0].save_pretrained(str(path.resolve()), state_dict=state_dict)
+            #context.models[0].save_pretrained(str(path.resolve()))
+            #state_dict = self.model.state_dict()
+            self.model.save_pretrained(str(path.resolve()))
+             
+            
+    '''     
+    # save function in DeepSpeedTrial
+    # https://deepspeed.readthedocs.io/en/stable/model-checkpointing.html#deepspeed.DeepSpeedEngine.save_checkpoint
+    def save(self, context: DeepSpeedTrialContext, path: pathlib.Path) -> None:
+        """
+        Save is called on every GPU to make sure all checkpoint shards are saved.
+            
+        By default, we loop through the wrapped model engines and call DeepSpeed's save:
+
+        .. code-block:: python
+            
+            for i, m in enumerate(context.models):
+                m.save_checkpoint(path, tag=f"model{i}")
+            
+        This method can be overwritten for more custom save behavior.
+        """ 
+    for i, m in enumerate(context.models):
+        m.save_checkpoint(path, tag=f"model{i}")
+    '''
 
     def build_training_data_loader(self) -> det_pytorch.DataLoader:
         return det_pytorch.DataLoader(
@@ -173,7 +202,7 @@ class VicunaTrial(DeepSpeedTrial):
         # if self.fp16:
         #     inputs = inputs.half()
         outputs = self.model_engine(**inputs)
-        loss = outputs.loss.fp16()
+        loss = outputs.loss.half()
         self.reducer.update(loss.detach().cpu().numpy())
         return {}
 

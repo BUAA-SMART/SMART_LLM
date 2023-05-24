@@ -1,4 +1,4 @@
-name: vicuna_7b_fine_tuning_ds_lora_2n8u
+name: vicuna_7b_fine_tuning_ds_lora_2n8u_length_512
 hyperparameters:
   pretrained_model_name_or_path: /root/model
   deepspeed_config: ds_config_community.json
@@ -11,14 +11,16 @@ hyperparameters:
 data:
   data_path: /root/dataset/zh_honesty_smart.json
   lazy_preprocess: false
-records_per_epoch: 5344
+records_per_epoch: 140000
 min_validation_period:
-  batches: 5344
+  batches: 50
+min_checkpoint_period:
+  batches: 1000
 searcher:
   name: single
   metric: perplexity
   max_length:
-    epochs: 1
+    epochs: 3
   smaller_is_better: true
 resources:
   slots_per_trial: 8
