@@ -7,8 +7,8 @@
 ## 目前实现的功能
 - 与vicuna server对接
 - 改进图形处理页面并与minigpt4 对接
-![](https://pic.imgdb.cn/item/649e39381ddac507ccb15a58.png)
-![](https://pic.imgdb.cn/item/649e39381ddac507ccb1597f.png)
+![](./assets/pic2.png)
+![](./assets/pic1.png)
 
 
 ## 后续改进的功能
