@@ -4,6 +4,7 @@ import { Message, ModelConfig, useAccessStore, useChatStore } from "./store";
 const TIME_OUT_MS = 60000;
 const makeRequestParam = (
   messages: Message[],
+  url:string,
   options?: {
     filterBot?: boolean;
     stream?: boolean;
@@ -30,17 +31,23 @@ const makeRequestParam = (
   }
   //生成vicuna格式的prompt
   const sep = "###"; //采用v1的config
-  const prompts = getPrompt(sendMessages, sep);
+  let prompts = getPrompt(sendMessages, sep);
   //console.log(prompt)
   //将当前参数取出
   const modelConfig = { ...useChatStore.getState().config.modelConfig };
-
+  const model = modelConfig.model
   //设置max_tokens对用户没有太大意义
   // @yidadaa: wont send max_tokens, because it is nonsense for Muggles
   //delete modelConfig.max_tokens;
 
   //返回vicunaChatRequest格式数据，之后直接用于请求
+  //如果是minigpt4，不需要组合为prompt，只需要最后一条信息
+  if(model === "minigpt4"){
+    prompts = messages[messages.length-1]["content"]
+  }
+  console.log(prompts)
   return {
+    pic_url:url,
     prompt: prompts,
     model: modelConfig.model,
     temperature: modelConfig.temperature,
@@ -98,7 +105,7 @@ export function requestOpenaiClient(path: string) {
 }
 
 export async function requestChat(messages: Message[]) {
-  const req: vicunaChatRequest = makeRequestParam(messages, {
+  const req: vicunaChatRequest = makeRequestParam(messages, "",{
     filterBot: true,
   });
 
@@ -164,6 +171,7 @@ export async function requestUsage() {
 
 export async function requestChatStream(
   messages: Message[],
+  url:string,
   options?: {
     filterBot?: boolean;
     modelConfig?: ModelConfig;
@@ -173,8 +181,10 @@ export async function requestChatStream(
   },
 ) {
   console.log("requestChatStream");
+  console.log(messages)
+
   //生成request，用于流式请求
-  const req = makeRequestParam(messages, {
+  const req = makeRequestParam(messages, url,{
     stream: true,
     filterBot: false,
   });
@@ -187,10 +197,22 @@ export async function requestChatStream(
   const reqTimeoutId = setTimeout(() => controller.abort(), TIME_OUT_MS);
 
   const headers = { "User-Agent": "fastchat Client" };
+  const modelConfig = { ...useChatStore.getState().config.modelConfig };
+  const model = modelConfig.model
+  
+  let worker_address = "http://192.168.1.101:21002/worker_generate_stream"
+  if(model === "minigpt4"){
+    worker_address = "http://192.168.1.101:7789/worker_generate"
+  }
+
+  // let worker_address = "/worker/worker_generate_stream"
+  // if(model === "minigpt4"){
+  //   worker_address = "/worker/worker_generate"
+  // }
   //发送请求
   try {
     const res = await fetch(
-      "http://192.168.1.101:21002/worker_generate_stream",
+      worker_address,
       {
         method: "POST",
         headers: {
@@ -210,8 +232,8 @@ export async function requestChatStream(
       options?.onMessage(responseText, true);
       controller.abort();
     };
-
-    if (res.ok) {
+    
+    if (res.ok && model !== "minigpt4") {
       //getReader创建读取器，从响应流中按照块读取数据并将其解码为字符串
       const reader = res.body?.getReader();
       //使用TextDecoder解码
@@ -256,7 +278,20 @@ export async function requestChatStream(
       //结束，再调用 onMessage 回调函数一次，以便通知调用方已经读取完了所有数据。然后，代码会调用 controller.abort()，请求。
       //onmessgae接受信息进行存储以及显示
       finish();
-    } else if (res.status === 401) {
+    } else if (res.ok && model === "minigpt4") {
+      const json = await res.json();
+      console.log(json);
+      if (json.error_code === 0) {
+        let output: string = json.text.trim();
+        output = output.replace(/<\/Img>|<\/s>|<Img>|<s>/g, '');
+        console.log(output);
+        options?.onMessage(output, true);
+      } else {
+        let erroroutput: string = json.text.trim();
+        erroroutput = erroroutput.replace(/<\/Img>|<\/s>|<Img>|<s>|<\/img>|<img>/g, '');
+        options?.onMessage(erroroutput + ` ErrorCode: ${json.error_code}`, true);
+      }
+    }else if (res.status === 401) {
       //401处理
       console.error("Unauthorized");
       options?.onError(new Error("Unauthorized"), res.status);

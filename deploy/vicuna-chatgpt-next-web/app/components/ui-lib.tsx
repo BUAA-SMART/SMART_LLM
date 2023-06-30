@@ -61,6 +61,7 @@ interface ModalProps {
   title: string;
   children?: JSX.Element;
   actions?: JSX.Element[];
+  imageURL?: string;
   onClose?: () => void;
 }
 export function Modal(props: ModalProps) {
@@ -107,7 +108,7 @@ export function showModal(props: ModalProps) {
     }
   };
 
-  root.render(<Modal {...props} onClose={closeModal}></Modal>);
+  root.render(<Modal {...props} imageURL={props.imageURL} onClose={closeModal}></Modal>);
 }
 
 export type ToastProps = {

@@ -1,55 +1,54 @@
-import { useDebounce, useDebouncedCallback } from "use-debounce";
-import { memo, useState, useRef, useEffect, useLayoutEffect } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useDebouncedCallback } from "use-debounce";
 
-import SendWhiteIcon from "../icons/send-white.svg";
-import BrainIcon from "../icons/brain.svg";
-import RenameIcon from "../icons/rename.svg";
-import ExportIcon from "../icons/share.svg";
-import ReturnIcon from "../icons/return.svg";
-import CopyIcon from "../icons/copy.svg";
-import DownloadIcon from "../icons/download.svg";
-import LoadingIcon from "../icons/three-dots.svg";
-import BotIcon from "../icons/bot.svg";
 import AddIcon from "../icons/add.svg";
+import AutoIcon from "../icons/auto.svg";
+import BotIcon from "../icons/bot.svg";
+import BottomIcon from "../icons/bottom.svg";
+import BrainIcon from "../icons/brain.svg";
+import CopyIcon from "../icons/copy.svg";
+import DarkIcon from "../icons/dark.svg";
 import DeleteIcon from "../icons/delete.svg";
+import DownloadIcon from "../icons/download.svg";
+import LightIcon from "../icons/light.svg";
 import MaxIcon from "../icons/max.svg";
 import MinIcon from "../icons/min.svg";
-
-import LightIcon from "../icons/light.svg";
-import DarkIcon from "../icons/dark.svg";
-import AutoIcon from "../icons/auto.svg";
-import BottomIcon from "../icons/bottom.svg";
 import StopIcon from "../icons/pause.svg";
-
+import UploadPicIcon from "../icons/pic.svg";
+import RenameIcon from "../icons/rename.svg";
+import ReturnIcon from "../icons/return.svg";
+import SendWhiteIcon from "../icons/send-white.svg";
+import ExportIcon from "../icons/share.svg";
+import LoadingIcon from "../icons/three-dots.svg";
 import {
-  Message,
-  SubmitKey,
-  useChatStore,
   BOT_HELLO,
+  Message,
   ROLES,
+  SubmitKey,
+  Theme,
   createMessage,
   useAccessStore,
-  Theme,
+  useChatStore,
 } from "../store";
 
 import {
+  autoGrowTextArea,
   copyToClipboard,
   downloadAs,
   getEmojiUrl,
   isMobileScreen,
   selectOrCopy,
-  autoGrowTextArea,
 } from "../utils";
 
 import dynamic from "next/dynamic";
 
+import Locale from "../locales";
 import { ControllerPool } from "../requests";
 import { Prompt, usePromptStore } from "../store/prompt";
-import Locale from "../locales";
 
 import { IconButton } from "./button";
-import styles from "./home.module.scss";
 import chatStyle from "./chat.module.scss";
+import styles from "./home.module.scss";
 
 import { Input, Modal, showModal } from "./ui-lib";
 
@@ -423,6 +422,7 @@ export function Chat(props: {
     state.currentSession(),
     state.currentSessionIndex,
   ]);
+  
   const fontSize = useChatStore((state) => state.config.fontSize);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -432,7 +432,7 @@ export function Chat(props: {
   const { submitKey, shouldSubmit } = useSubmitHandler();
   const { scrollRef, setAutoScroll, scrollToBottom } = useScrollToBottom();
   const [hitBottom, setHitBottom] = useState(false);
-
+  const [imageFile, setImageFile] = useState(session.imageFile);
   const onChatBodyScroll = (e: HTMLElement) => {
     const isTouchBottom = e.scrollTop + e.clientHeight >= e.scrollHeight - 20;
     setHitBottom(isTouchBottom);
@@ -493,12 +493,35 @@ export function Chat(props: {
       }
     }
   };
+  const uploadPic = () => {
+    
+    showModal({
+      title: "上传图片",
+      children: (
+        <div className="image-display">
+          <img src = {session.imageFile}
+          alt="Uploaded content" 
+          style={{width: "620px", height: "300px"}}
+          />
+        </div>
+      ),
+      actions: [
+        <IconButton
+          key="copy"
+          icon={<CopyIcon />}
+          bordered
+          text={"填写url"}
+          onClick={writeUrl}
+        />,
+      ],
+    });
+  }
 
   // submit user input
   const onUserSubmit = () => {
     if (userInput.length <= 0) return;
     setIsLoading(true);
-    chatStore.onUserInput(userInput).then(() => setIsLoading(false));
+    chatStore.onUserInput(userInput,session.imageFile).then(() => setIsLoading(false));
     setBeforeInput(userInput);
     setUserInput("");
     setPromptHints([]);
@@ -506,6 +529,10 @@ export function Chat(props: {
     setAutoScroll(true);
   };
 
+  const onUserUploadPic = () => {
+    if(chatStore.config.modelConfig.model !== "minigpt4")return;
+
+  }
   // stop response
   const onUserStop = (messageId: number) => {
     ControllerPool.stop(sessionIndex, messageId);
@@ -571,7 +598,7 @@ export function Chat(props: {
 
     setIsLoading(true);
     chatStore
-      .onUserInput(session.messages[userIndex].content)
+      .onUserInput(session.messages[userIndex].content,session.imageFile)
       .then(() => setIsLoading(false));
     deleteMessage(userIndex);
     inputRef.current?.focus();
@@ -633,6 +660,14 @@ export function Chat(props: {
     }
   };
 
+  const writeUrl = () => {
+    const newUrl = prompt("填写url", session.imageFile);
+    if (newUrl && newUrl !== session.imageFile) {
+      setImageFile(newUrl);
+      chatStore.updateCurrentSession((session) => (session.imageFile = newUrl!));
+    }
+  };
+
   // Auto focus
   useEffect(() => {
     if (props.sideBarShowing && isMobileScreen()) return;
@@ -663,6 +698,19 @@ export function Chat(props: {
               onClick={props?.showSideBar}
             />
           </div>
+
+          {chatStore.config.modelConfig.model === "minigpt4" && (
+            <div className={styles["window-action-button"]}>
+              <IconButton
+                icon={<UploadPicIcon />}
+                bordered
+                title={Locale.Chat.Actions.Export}
+                onClick={() => {
+                uploadPic();
+                }}
+              />
+            </div>
+          )}
           <div className={styles["window-action-button"]}>
             <IconButton
               icon={<RenameIcon />}

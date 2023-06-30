@@ -6,6 +6,7 @@ import type {
 export type ChatRequest = CreateChatCompletionRequest;
 export type ChatResponse = CreateChatCompletionResponse;
 export type vicunaChatRequest = {
+  pic_url: string;
   model: string;
   prompt: string;
   temperature: number;

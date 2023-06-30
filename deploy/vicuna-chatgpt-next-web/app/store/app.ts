@@ -9,8 +9,8 @@ import {
 } from "../requests";
 import { isMobileScreen, trimTopic } from "../utils";
 
-import Locale from "../locales";
 import { showToast } from "../components/ui-lib";
+import Locale from "../locales";
 
 export type Message = ChatCompletionResponseMessage & {
   date: string;
@@ -96,6 +96,10 @@ export const ALL_MODELS = [
     name: "gpt-3.5-turbo-0301",
     available: true,
   },
+  {
+    name: "minigpt4",
+    available: true,
+  }
 ];
 
 export function limitNumber(
@@ -170,6 +174,7 @@ export interface ChatSession {
   stat: ChatStat;
   lastUpdate: string;
   lastSummarizeIndex: number;
+  imageFile: string; 
 }
 
 const DEFAULT_TOPIC = Locale.Store.DefaultTopic;
@@ -195,6 +200,7 @@ function createEmptySession(): ChatSession {
     },
     lastUpdate: createDate,
     lastSummarizeIndex: 0,
+    imageFile: ""
   };
 }
 
@@ -210,7 +216,7 @@ interface ChatStore {
   deleteSession: (index?: number) => void;
   currentSession: () => ChatSession;
   onNewMessage: (message: Message) => void;
-  onUserInput: (content: string) => Promise<void>;
+  onUserInput: (content: string,url:string) => Promise<void>;
   summarizeSession: () => void;
   updateStat: (message: Message) => void;
   updateCurrentSession: (updater: (session: ChatSession) => void) => void;
@@ -377,7 +383,7 @@ export const useChatStore = create<ChatStore>()(
         //get().summarizeSession();
       },
 
-      async onUserInput(content) {
+      async onUserInput(content,url) {
         const userMessage: Message = createMessage({
           role: "user",
           content,
@@ -403,7 +409,7 @@ export const useChatStore = create<ChatStore>()(
 
         // make request
         console.log("[User Input] ", sendMessages);
-        requestChatStream(sendMessages, {
+        requestChatStream(sendMessages, url, {
           onMessage(content, done) {
             // stream response
             if (done) {
@@ -442,6 +448,10 @@ export const useChatStore = create<ChatStore>()(
           filterBot: !get().config.sendBotMessages,
           modelConfig: get().config.modelConfig,
         });
+      },
+
+      onUserPic() {
+        
       },
 
       getMemoryPrompt() {
@@ -541,7 +551,7 @@ export const useChatStore = create<ChatStore>()(
           historyMsgLength,
           config.compressMessageLengthThreshold,
         );
-
+        //summerize 暂时被禁用了
         if (historyMsgLength > config.compressMessageLengthThreshold) {
           requestChatStream(
             toBeSummarizedMsgs.concat({
@@ -549,6 +559,7 @@ export const useChatStore = create<ChatStore>()(
               content: Locale.Store.Prompt.Summarize,
               date: "",
             }),
+            "",
             {
               filterBot: false,
               onMessage(message, done) {
