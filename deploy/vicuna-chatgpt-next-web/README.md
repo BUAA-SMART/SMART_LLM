@@ -1,6 +1,6 @@
 ## 一款可以使用多种LM的Chat UI
 
-本项目基于https://github.com/Yidadaa/ChatGPT-Next-Web项目进行改进，深表感谢！
+本项目基于https://github.com/Yidadaa/ChatGPT-Next-Web 项目进行改进，深表感谢！
 
 
 
